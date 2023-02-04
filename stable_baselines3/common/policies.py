@@ -89,7 +89,9 @@ class BaseModel(nn.Module):
         self.features_extractor_class = features_extractor_class
         self.features_extractor_kwargs = features_extractor_kwargs
         # Automatically deactivate dtype and bounds checks
-        if normalize_images is False and issubclass(features_extractor_class, (NatureCNN, CombinedExtractor)):
+        if normalize_images is False and issubclass(
+            features_extractor_class, (NatureCNN, CombinedExtractor)
+        ):
             self.features_extractor_kwargs.update(dict(normalized_image=True))
 
     def _update_features_extractor(
@@ -111,14 +113,23 @@ class BaseModel(nn.Module):
         if features_extractor is None:
             # The features extractor is not shared, create a new one
             features_extractor = self.make_features_extractor()
-        net_kwargs.update(dict(features_extractor=features_extractor, features_dim=features_extractor.features_dim))
+        net_kwargs.update(
+            dict(
+                features_extractor=features_extractor,
+                features_dim=features_extractor.features_dim,
+            )
+        )
         return net_kwargs
 
     def make_features_extractor(self) -> BaseFeaturesExtractor:
         """Helper method to create a features extractor."""
-        return self.features_extractor_class(self.observation_space, **self.features_extractor_kwargs)
+        return self.features_extractor_class(
+            self.observation_space, **self.features_extractor_kwargs
+        )
 
-    def extract_features(self, obs: th.Tensor, features_extractor: Optional[BaseFeaturesExtractor] = None) -> th.Tensor:
+    def extract_features(
+        self, obs: th.Tensor, features_extractor: Optional[BaseFeaturesExtractor] = None
+    ) -> th.Tensor:
         """
         Preprocess the observation if needed and extract features.
 
@@ -138,7 +149,9 @@ class BaseModel(nn.Module):
 
         features_extractor = features_extractor or self.features_extractor
         assert features_extractor is not None, "No features extractor was set"
-        preprocessed_obs = preprocess_obs(obs, self.observation_space, normalize_images=self.normalize_images)
+        preprocessed_obs = preprocess_obs(
+            obs, self.observation_space, normalize_images=self.normalize_images
+        )
         return features_extractor(preprocessed_obs)
 
     def _get_constructor_parameters(self) -> Dict[str, Any]:
@@ -172,10 +185,18 @@ class BaseModel(nn.Module):
 
         :param path:
         """
-        th.save({"state_dict": self.state_dict(), "data": self._get_constructor_parameters()}, path)
+        th.save(
+            {
+                "state_dict": self.state_dict(),
+                "data": self._get_constructor_parameters(),
+            },
+            path,
+        )
 
     @classmethod
-    def load(cls: Type[SelfBaseModel], path: str, device: Union[th.device, str] = "auto") -> SelfBaseModel:
+    def load(
+        cls: Type[SelfBaseModel], path: str, device: Union[th.device, str] = "auto"
+    ) -> SelfBaseModel:
         """
         Load model from path.
 
@@ -199,7 +220,9 @@ class BaseModel(nn.Module):
 
         :param vector:
         """
-        th.nn.utils.vector_to_parameters(th.as_tensor(vector, dtype=th.float, device=self.device), self.parameters())
+        th.nn.utils.vector_to_parameters(
+            th.as_tensor(vector, dtype=th.float, device=self.device), self.parameters()
+        )
 
     def parameters_to_vector(self) -> np.ndarray:
         """
@@ -207,7 +230,9 @@ class BaseModel(nn.Module):
 
         :return:
         """
-        return th.nn.utils.parameters_to_vector(self.parameters()).detach().cpu().numpy()
+        return (
+            th.nn.utils.parameters_to_vector(self.parameters()).detach().cpu().numpy()
+        )
 
     def set_training_mode(self, mode: bool) -> None:
         """
@@ -219,7 +244,9 @@ class BaseModel(nn.Module):
         """
         self.train(mode)
 
-    def obs_to_tensor(self, observation: Union[np.ndarray, Dict[str, np.ndarray]]) -> Tuple[th.Tensor, bool]:
+    def obs_to_tensor(
+        self, observation: Union[np.ndarray, Dict[str, np.ndarray]]
+    ) -> Tuple[th.Tensor, bool]:
         """
         Convert an input observation to a PyTorch tensor that can be fed to a model.
         Includes sugar-coating to handle different observations (e.g. normalizing images).
@@ -238,9 +265,13 @@ class BaseModel(nn.Module):
                     obs_ = maybe_transpose(obs, obs_space)
                 else:
                     obs_ = np.array(obs)
-                vectorized_env = vectorized_env or is_vectorized_observation(obs_, obs_space)
+                vectorized_env = vectorized_env or is_vectorized_observation(
+                    obs_, obs_space
+                )
                 # Add batch dimension if needed
-                observation[key] = obs_.reshape((-1,) + self.observation_space[key].shape)
+                observation[key] = obs_.reshape(
+                    (-1,) + self.observation_space[key].shape
+                )
 
         elif is_image_space(self.observation_space):
             # Handle the different cases for images
@@ -252,7 +283,9 @@ class BaseModel(nn.Module):
 
         if not isinstance(observation, dict):
             # Dict obs need to be handled separately
-            vectorized_env = is_vectorized_observation(observation, self.observation_space)
+            vectorized_env = is_vectorized_observation(
+                observation, self.observation_space
+            )
             # Add batch dimension if needed
             observation = observation.reshape((-1,) + self.observation_space.shape)
 
@@ -297,7 +330,9 @@ class BasePolicy(BaseModel, ABC):
                 module.bias.data.fill_(0.0)
 
     @abstractmethod
-    def _predict(self, observation: th.Tensor, deterministic: bool = False) -> th.Tensor:
+    def _predict(
+        self, observation: th.Tensor, deterministic: bool = False
+    ) -> th.Tensor:
         """
         Get the action according to the policy for a given observation.
 
@@ -351,7 +386,9 @@ class BasePolicy(BaseModel, ABC):
             else:
                 # Actions could be on arbitrary scale, so clip the actions to avoid
                 # out of bound error (e.g. if sampling from a Gaussian distribution)
-                actions = np.clip(actions, self.action_space.low, self.action_space.high)
+                actions = np.clip(
+                    actions, self.action_space.low, self.action_space.high
+                )
 
         # Remove batch dimension if needed
         if not vectorized_env:
@@ -450,7 +487,11 @@ class ActorCriticPolicy(BasePolicy):
             normalize_images=normalize_images,
         )
 
-        if isinstance(net_arch, list) and len(net_arch) > 0 and isinstance(net_arch[0], dict):
+        if (
+            isinstance(net_arch, list)
+            and len(net_arch) > 0
+            and isinstance(net_arch[0], dict)
+        ):
             warnings.warn(
                 (
                     "As shared layers in the mlp_extractor are removed since SB3 v1.8.0, "
@@ -496,7 +537,9 @@ class ActorCriticPolicy(BasePolicy):
         self.dist_kwargs = dist_kwargs
 
         # Action distribution
-        self.action_dist = make_proba_distribution(action_space, use_sde=use_sde, dist_kwargs=dist_kwargs)
+        self.action_dist = make_proba_distribution(
+            action_space, use_sde=use_sde, dist_kwargs=dist_kwargs
+        )
 
         self._build(lr_schedule)
 
@@ -530,7 +573,9 @@ class ActorCriticPolicy(BasePolicy):
 
         :param n_envs:
         """
-        assert isinstance(self.action_dist, StateDependentNoiseDistribution), "reset_noise() is only available when using gSDE"
+        assert isinstance(
+            self.action_dist, StateDependentNoiseDistribution
+        ), "reset_noise() is only available when using gSDE"
         self.action_dist.sample_weights(self.log_std, batch_size=n_envs)
 
     def _build_mlp_extractor(self) -> None:
@@ -565,10 +610,21 @@ class ActorCriticPolicy(BasePolicy):
             )
         elif isinstance(self.action_dist, StateDependentNoiseDistribution):
             self.action_net, self.log_std = self.action_dist.proba_distribution_net(
-                latent_dim=latent_dim_pi, latent_sde_dim=latent_dim_pi, log_std_init=self.log_std_init
+                latent_dim=latent_dim_pi,
+                latent_sde_dim=latent_dim_pi,
+                log_std_init=self.log_std_init,
             )
-        elif isinstance(self.action_dist, (CategoricalDistribution, MultiCategoricalDistribution, BernoulliDistribution)):
-            self.action_net = self.action_dist.proba_distribution_net(latent_dim=latent_dim_pi)
+        elif isinstance(
+            self.action_dist,
+            (
+                CategoricalDistribution,
+                MultiCategoricalDistribution,
+                BernoulliDistribution,
+            ),
+        ):
+            self.action_net = self.action_dist.proba_distribution_net(
+                latent_dim=latent_dim_pi
+            )
         else:
             raise NotImplementedError(f"Unsupported distribution '{self.action_dist}'.")
 
@@ -597,9 +653,13 @@ class ActorCriticPolicy(BasePolicy):
                 module.apply(partial(self.init_weights, gain=gain))
 
         # Setup optimizer with initial learning rate
-        self.optimizer = self.optimizer_class(self.parameters(), lr=lr_schedule(1), **self.optimizer_kwargs)
+        self.optimizer = self.optimizer_class(
+            self.parameters(), lr=lr_schedule(1), **self.optimizer_kwargs
+        )
 
-    def forward(self, obs: th.Tensor, deterministic: bool = False) -> Tuple[th.Tensor, th.Tensor, th.Tensor]:
+    def forward(
+        self, obs: th.Tensor, deterministic: bool = False
+    ) -> Tuple[th.Tensor, th.Tensor, th.Tensor]:
         """
         Forward pass in all the networks (actor and critic)
 
@@ -623,7 +683,9 @@ class ActorCriticPolicy(BasePolicy):
         actions = actions.reshape((-1,) + self.action_space.shape)
         return actions, values, log_prob
 
-    def extract_features(self, obs: th.Tensor) -> Union[th.Tensor, Tuple[th.Tensor, th.Tensor]]:
+    def extract_features(
+        self, obs: th.Tensor
+    ) -> Union[th.Tensor, Tuple[th.Tensor, th.Tensor]]:
         """
         Preprocess the observation if needed and extract features.
 
@@ -658,11 +720,15 @@ class ActorCriticPolicy(BasePolicy):
             # Here mean_actions are the logits (before rounding to get the binary actions)
             return self.action_dist.proba_distribution(action_logits=mean_actions)
         elif isinstance(self.action_dist, StateDependentNoiseDistribution):
-            return self.action_dist.proba_distribution(mean_actions, self.log_std, latent_pi)
+            return self.action_dist.proba_distribution(
+                mean_actions, self.log_std, latent_pi
+            )
         else:
             raise ValueError("Invalid action distribution")
 
-    def _predict(self, observation: th.Tensor, deterministic: bool = False) -> th.Tensor:
+    def _predict(
+        self, observation: th.Tensor, deterministic: bool = False
+    ) -> th.Tensor:
         """
         Get the action according to the policy for a given observation.
 
@@ -670,9 +736,13 @@ class ActorCriticPolicy(BasePolicy):
         :param deterministic: Whether to use stochastic or deterministic actions
         :return: Taken action according to the policy
         """
-        return self.get_distribution(observation).get_actions(deterministic=deterministic)
+        return self.get_distribution(observation).get_actions(
+            deterministic=deterministic
+        )
 
-    def evaluate_actions(self, obs: th.Tensor, actions: th.Tensor) -> Tuple[th.Tensor, th.Tensor, Optional[th.Tensor]]:
+    def evaluate_actions(
+        self, obs: th.Tensor, actions: th.Tensor
+    ) -> Tuple[th.Tensor, th.Tensor, Optional[th.Tensor]]:
         """
         Evaluate actions according to the current policy,
         given the observations.
@@ -939,3 +1009,79 @@ class ContinuousCritic(BaseModel):
         with th.no_grad():
             features = self.extract_features(obs, self.features_extractor)
         return self.q_networks[0](th.cat([features, actions], dim=1))
+
+
+class DiscreteCritic(BaseModel):
+    """
+    Critic network(s) for DDPG/SAC/TD3.
+    It represents the action-state value function (Q-value function).
+    Compared to A2C/PPO critics, this one represents the Q-value
+    and takes the continuous action as input. It is concatenated with the state
+    and then fed to the network which outputs a single value: Q(s, a).
+    For more recent algorithms like SAC/TD3, multiple networks
+    are created to give different estimates.
+
+    By default, it creates two critic networks used to reduce overestimation
+    thanks to clipped Q-learning (cf TD3 paper).
+
+    :param observation_space: Obervation space
+    :param action_space: Action space
+    :param net_arch: Network architecture
+    :param features_extractor: Network to extract features
+        (a CNN when using images, a nn.Flatten() layer otherwise)
+    :param features_dim: Number of features
+    :param activation_fn: Activation function
+    :param normalize_images: Whether to normalize images or not,
+         dividing by 255.0 (True by default)
+    :param n_critics: Number of critic networks to create.
+    :param share_features_extractor: Whether the features extractor is shared or not
+        between the actor and the critic (this saves computation time)
+    """
+
+    def __init__(
+        self,
+        observation_space: spaces.Space,
+        action_space: spaces.Space,
+        net_arch: List[int],
+        features_extractor: nn.Module,
+        features_dim: int,
+        activation_fn: Type[nn.Module] = nn.ReLU,
+        normalize_images: bool = True,
+        n_critics: int = 2,
+        share_features_extractor: bool = True,
+    ):
+        super().__init__(
+            observation_space,
+            action_space,
+            features_extractor=features_extractor,
+            normalize_images=normalize_images,
+        )
+
+        action_dim = get_action_dim(self.action_space) * self.action_space.n
+
+        self.share_features_extractor = share_features_extractor
+        self.n_critics = n_critics
+        self.q_networks = []
+        for idx in range(n_critics):
+            q_net = create_mlp(features_dim, action_dim, net_arch, activation_fn)
+            q_net = nn.Sequential(*q_net)
+            self.add_module(f"qf{idx}", q_net)
+            self.q_networks.append(q_net)
+
+    def forward(self, obs: th.Tensor) -> Tuple[th.Tensor, ...]:
+        # Learn the features extractor using the policy loss only
+        # when the features_extractor is shared with the actor
+        with th.set_grad_enabled(not self.share_features_extractor):
+            features = self.extract_features(obs, self.features_extractor)
+        # qvalue_input = th.cat([features], dim=1)
+        return tuple(q_net(features) for q_net in self.q_networks)
+
+    def q1_forward(self, obs: th.Tensor) -> th.Tensor:
+        """
+        Only predict the Q-value using the first network.
+        This allows to reduce computation when all the estimates are not needed
+        (e.g. when updating the policy in TD3).
+        """
+        with th.no_grad():
+            features = self.extract_features(obs, self.features_extractor)
+        return self.q_networks[0](features)
