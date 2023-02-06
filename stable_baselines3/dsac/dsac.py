@@ -209,7 +209,9 @@ class DSAC(OffPolicyAlgorithm):
             )
 
             # Action by the current actor for the sampled state
-            actions_pi, log_prob = self.actor.action_log_prob(replay_data.observations)
+            actions_prob, log_prob = self.actor.action_log_prob(
+                replay_data.observations
+            )
 
             ent_coef_loss = None
             if self.ent_coef_optimizer is not None:
@@ -243,7 +245,7 @@ class DSAC(OffPolicyAlgorithm):
                 next_q_values = th.minimum(next_q1, next_q2)
                 # add entropy term
                 next_q_values = (
-                    actions_pi * (next_q_values - ent_coef * next_log_prob)
+                    actions_prob * (next_q_values - ent_coef * next_log_prob)
                 ).sum(dim=1, keepdim=True)
                 # td error + entropy term
                 target_q_values = (
@@ -275,7 +277,7 @@ class DSAC(OffPolicyAlgorithm):
                 min_q_values = th.min(q_values, dim=0).values
 
             actor_loss = (
-                (actions_pi * (ent_coef * log_prob - min_q_values))
+                (actions_prob * (ent_coef * log_prob - min_q_values))
                 .sum(dim=1, keepdim=True)
                 .mean()
             )
