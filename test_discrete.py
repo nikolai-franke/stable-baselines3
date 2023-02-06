@@ -4,7 +4,6 @@ from stable_baselines3.common.env_util import make_atari_env, make_vec_env
 from stable_baselines3.common.vec_env import VecFrameStack
 from stable_baselines3.common.vec_env.subproc_vec_env import SubprocVecEnv
 from stable_baselines3.dsac.dsac import DSAC
-from stable_baselines3.sac.sac import DiscreteSAC
 
 
 def main():
